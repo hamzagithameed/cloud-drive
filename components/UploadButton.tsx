@@ -25,23 +25,29 @@ export default function UploadButton({ folderId = null, onUploaded }: Props) {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        console.log("[UPLOAD] Starting upload for:", file.name);
 
         // 1. Get presigned URL
+        console.log("[UPLOAD] Requesting presigned URL...");
         const { data } = await axios.post(
           "/api/files/presign",
           { fileName: file.name, fileType: file.type, fileSize: file.size },
           { headers: { Authorization: `Bearer ${token}` } }
         );
+        console.log("[UPLOAD] Presigned URL received");
 
         // 2. Upload to S3
+        console.log("[UPLOAD] Uploading to S3...");
         await axios.put(data.presignedUrl, file, {
           headers: { "Content-Type": file.type },
           onUploadProgress: (e) => {
             if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
           },
         });
+        console.log("[UPLOAD] S3 upload complete");
 
         // 3. Confirm metadata
+        console.log("[UPLOAD] Confirming metadata...");
         await axios.post(
           "/api/files/confirm",
           {
@@ -55,11 +61,15 @@ export default function UploadButton({ folderId = null, onUploaded }: Props) {
           },
           { headers: { Authorization: `Bearer ${token}` } }
         );
+        console.log("[UPLOAD] Upload complete!");
       }
 
       onUploaded();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Upload failed");
+      console.error("[UPLOAD] Error:", err);
+      console.error("[UPLOAD] Error response:", err.response?.data);
+      const errorMsg = err.response?.data?.message || err.message || "Upload failed";
+      setError(errorMsg);
     } finally {
       setUploading(false);
       setProgress(0);
